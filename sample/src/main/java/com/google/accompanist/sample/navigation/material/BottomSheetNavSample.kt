@@ -19,17 +19,27 @@ package com.google.accompanist.sample.navigation.material
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.Button
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.ModalBottomSheetValue
+import androidx.compose.material.Surface
+import androidx.compose.material.SwipeableDefaults
 import androidx.compose.material.Text
+import androidx.compose.material.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import com.google.accompanist.navigation.material.BottomSheetNavigator
 import com.google.accompanist.navigation.material.ExperimentalMaterialNavigationApi
 import com.google.accompanist.navigation.material.ModalBottomSheetLayout
 import com.google.accompanist.navigation.material.bottomSheet
@@ -53,12 +63,31 @@ private object Destinations {
     const val Home = "HOME"
     const val Feed = "FEED"
     const val Sheet = "SHEET"
+    const val Dialog = "Dialog"
+}
+
+@OptIn(
+    ExperimentalMaterialApi::class,
+    ExperimentalMaterialNavigationApi::class
+)
+@Composable
+fun rememberFullyExpandedBottomSheetNavigator(
+    animationSpec: AnimationSpec<Float> = SwipeableDefaults.AnimationSpec
+): BottomSheetNavigator {
+    val sheetState = rememberModalBottomSheetState(
+        ModalBottomSheetValue.Hidden,
+        animationSpec,
+        true
+    )
+    return remember(sheetState) {
+        BottomSheetNavigator(sheetState = sheetState)
+    }
 }
 
 @OptIn(ExperimentalMaterialNavigationApi::class)
 @Composable
 fun BottomSheetNavDemo() {
-    val bottomSheetNavigator = rememberBottomSheetNavigator()
+    val bottomSheetNavigator = rememberFullyExpandedBottomSheetNavigator()
     val navController = rememberNavController(bottomSheetNavigator)
 
     ModalBottomSheetLayout(bottomSheetNavigator) {
@@ -75,13 +104,27 @@ fun BottomSheetNavDemo() {
             bottomSheet(Destinations.Sheet + "?arg={arg}") { backstackEntry ->
                 val arg = backstackEntry.arguments?.getString("arg") ?: "Missing argument :("
                 BottomSheet(
-                    showFeed = { navController.navigate(Destinations.Feed) },
+                    showFeed = { navController.navigate("graph") },
                     showAnotherSheet = {
                         navController.navigate(Destinations.Sheet + "?arg=${UUID.randomUUID()}")
                     },
                     arg = arg
                 )
             }
+
+            navigation(Destinations.Dialog, "graph") {
+                dialog(Destinations.Dialog) {
+                    Surface {
+                        Button(onClick = { navController.navigate("feed1") }) {
+                            Text(text = "Open Feed")
+                        }
+                    }
+                }
+                composable("feed1") {
+                    Text(text = "Another Feed")
+                }
+            }
+
         }
     }
 }
@@ -101,10 +144,10 @@ private fun HomeScreen(showSheet: () -> Unit, showFeed: () -> Unit) {
 
 @Composable
 private fun BottomSheet(showFeed: () -> Unit, showAnotherSheet: () -> Unit, arg: String) {
-    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Sheet with arg: $arg")
         Button(onClick = showFeed) {
-            Text("Click me to navigate!")
+            Text("Open Dialog")
         }
         Button(onClick = showAnotherSheet) {
             Text("Click me to show another sheet!")
